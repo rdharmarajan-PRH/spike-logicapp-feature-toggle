@@ -46,19 +46,38 @@ public class AppConfigurationToggleTests : TestBase
         new(JsonSerializer.Serialize(new { shipmentId = "SHP-77", destination = "Seattle" }),
             Encoding.UTF8, "application/json");
 
-    // App Configuration returns the flag as a key-value whose "value" is a JSON string
-    // describing the feature flag. enabled=true with no client filters => always on.
+    // App Configuration returns the flag as a key-value whose "value" is a JSON STRING
+    // (itself JSON) describing the feature flag. We build it with objects + JsonSerializer
+    // to avoid any hand-written brace escaping. enabled=true with no client filters => on.
     private static string FeatureFlagKv(bool enabled, int? percentage = null)
     {
-        var ff = percentage.HasValue
-            ? $$"""{"id":"BetaShippingProvider","enabled":{{enabled.ToString().ToLower()}},"conditions":{"client_filters":[{"name":"Microsoft.Percentage","parameters":{"Value":{{percentage}}}}]}}"""
-            : $$"""{"id":"BetaShippingProvider","enabled":{{enabled.ToString().ToLower()}},"conditions":{"client_filters":[]}}""";
+        object conditions = percentage.HasValue
+            ? new
+            {
+                client_filters = new[]
+                {
+                    new
+                    {
+                        name = "Microsoft.Percentage",
+                        parameters = new Dictionary<string, object> { ["Value"] = percentage.Value }
+                    }
+                }
+            }
+            : new { client_filters = Array.Empty<object>() };
 
-        // The KV envelope returned by the App Configuration REST API.
+        var featureFlag = new
+        {
+            id = "BetaShippingProvider",
+            enabled,
+            conditions
+        };
+
+        // The KV envelope returned by the App Configuration REST API. The "value" field
+        // is the feature flag serialized as a JSON string.
         var kv = new
         {
             key = ".appconfig.featureflag/BetaShippingProvider",
-            value = ff,
+            value = JsonSerializer.Serialize(featureFlag),
             content_type = "application/vnd.microsoft.appconfig.ff+json;charset=utf-8"
         };
         return JsonSerializer.Serialize(kv);

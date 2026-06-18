@@ -42,11 +42,15 @@ public abstract class LogicAppHostFixture : IDisposable
         }
 
         // Start the real host pointing at the copied Logic App project in the output dir.
-        _functions.StartFunctionsInstance(
+        // - runtime ("net8.0") is used by Corvus only for project-path resolution; our
+        //   copied LogicApp folder has no TFM subfolder so the path is used as-is.
+        // - provider ("node") becomes the `--node` flag for `func host start`, matching
+        //   the Logic Apps Standard Node worker.
+        _functions.StartFunctionsInstanceAsync(
             LogicAppProjectPath(),
             port,
-            "node",                 // runtime/worker
-            "node",                 // provider
+            "net8.0",               // runtime (for path resolution)
+            "node",                 // provider -> `func host start --node`
             config).GetAwaiter().GetResult();
 
         Client = new HttpClient { BaseAddress = new Uri($"http://localhost:{port}") };
@@ -73,7 +77,7 @@ public abstract class LogicAppHostFixture : IDisposable
 
     public void Dispose()
     {
-        _functions.TeardownFunctions();
+        _functions.TeardownFunctionsAsync().GetAwaiter().GetResult();
         Client.Dispose();
         GC.SuppressFinalize(this);
     }
