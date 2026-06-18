@@ -64,11 +64,7 @@ appsettings.*.json
 
 # ---- Editors / IDEs ----
 .vs/
-.vscode/*
-!.vscode/extensions.json
-!.vscode/settings.json
-!.vscode/launch.json
-!.vscode/tasks.json
+.vscode/
 
 # JetBrains (Rider / IntelliJ)
 .idea/
