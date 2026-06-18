@@ -1,0 +1,137 @@
+{
+  "definition": {
+    "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+    "contentVersion": "1.0.0.0",
+    "comment": "SAMPLE 02 - Feature toggle via AZURE APP CONFIGURATION. Fetches a feature flag at runtime from a centralized App Configuration store using its REST API and managed identity (Authentication: ManagedServiceIdentity). Parses the App Configuration feature-flag JSON schema, including 'enabled' and a Microsoft.Percentage client filter, so flags can be flipped centrally WITHOUT redeploying or restarting the Logic App. Flag key: BetaShippingProvider.",
+    "triggers": {
+      "When_a_shipment_is_requested": {
+        "type": "Request",
+        "kind": "Http",
+        "inputs": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "shipmentId": { "type": "string" },
+              "destination": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "actions": {
+      "Get_feature_flag_from_AppConfig": {
+        "type": "Http",
+        "inputs": {
+          "method": "GET",
+          "uri": "@{parameters('AppConfig_Endpoint')}/kv/.appconfig.featureflag%2FBetaShippingProvider",
+          "queries": {
+            "api-version": "2023-11-01"
+          },
+          "headers": {
+            "Accept": "application/vnd.microsoft.appconfig.kv+json"
+          },
+          "authentication": {
+            "type": "ManagedServiceIdentity",
+            "audience": "@parameters('AppConfig_Endpoint')"
+          }
+        },
+        "runAfter": {},
+        "runtimeConfiguration": {
+          "contentTransfer": { "transferMode": "Chunked" }
+        }
+      },
+      "Parse_feature_flag": {
+        "type": "ParseJson",
+        "inputs": {
+          "content": "@json(body('Get_feature_flag_from_AppConfig')?['value'])",
+          "schema": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "enabled": { "type": "boolean" },
+              "conditions": {
+                "type": "object",
+                "properties": {
+                  "client_filters": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": { "type": "string" },
+                        "parameters": { "type": "object" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "runAfter": {
+          "Get_feature_flag_from_AppConfig": [ "Succeeded" ]
+        }
+      },
+      "Evaluate_flag_with_percentage_rollout": {
+        "type": "InitializeVariable",
+        "comment": "If the flag is enabled and carries a Microsoft.Percentage filter, do a simple deterministic-enough rollout by comparing a random 0-99 roll against the configured percentage. If no percentage filter is present, the flag's 'enabled' value wins.",
+        "inputs": {
+          "variables": [
+            {
+              "name": "betaShippingActive",
+              "type": "boolean",
+              "value": "@if(equals(body('Parse_feature_flag')?['enabled'], true), if(empty(coalesce(body('Parse_feature_flag')?['conditions']?['client_filters'], createArray())), true, less(rand(0, 100), int(coalesce(first(body('Parse_feature_flag')?['conditions']?['client_filters'])?['parameters']?['Value'], 100)))), false)"
+            }
+          ]
+        },
+        "runAfter": {
+          "Parse_feature_flag": [ "Succeeded" ]
+        }
+      },
+      "Route_shipment": {
+        "type": "If",
+        "expression": {
+          "and": [
+            { "equals": [ "@variables('betaShippingActive')", true ] }
+          ]
+        },
+        "actions": {
+          "Use_beta_provider": {
+            "type": "Response",
+            "kind": "Http",
+            "inputs": {
+              "statusCode": 200,
+              "body": {
+                "shipmentId": "@triggerBody()?['shipmentId']",
+                "provider": "BETA-FastShip",
+                "flagSource": "Azure App Configuration",
+                "rolloutDecision": "included"
+              }
+            }
+          }
+        },
+        "else": {
+          "actions": {
+            "Use_standard_provider": {
+              "type": "Response",
+              "kind": "Http",
+              "inputs": {
+                "statusCode": 200,
+                "body": {
+                  "shipmentId": "@triggerBody()?['shipmentId']",
+                  "provider": "Standard-Carrier",
+                  "flagSource": "Azure App Configuration",
+                  "rolloutDecision": "excluded-or-disabled"
+                }
+              }
+            }
+          }
+        },
+        "runAfter": {
+          "Evaluate_flag_with_percentage_rollout": [ "Succeeded" ]
+        }
+      }
+    },
+    "outputs": {}
+  },
+  "kind": "Stateful"
+}

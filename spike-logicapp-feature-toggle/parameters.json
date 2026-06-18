@@ -1,0 +1,46 @@
+{
+  "FeatureFlag_NewPricingEngine": {
+    "type": "Bool",
+    "value": "@appsetting('FeatureFlag_NewPricingEngine')"
+  },
+  "FeatureFlag_SendEmailNotifications": {
+    "type": "Bool",
+    "value": "@appsetting('FeatureFlag_SendEmailNotifications')"
+  },
+  "FeatureFlag_BetaShippingProvider": {
+    "type": "Bool",
+    "value": "@appsetting('FeatureFlag_BetaShippingProvider')"
+  },
+  "FeatureFlag_GlobalKillSwitch": {
+    "type": "Bool",
+    "value": "@appsetting('FeatureFlag_GlobalKillSwitch')"
+  },
+  "Routing_FulfillmentVersion": {
+    "type": "String",
+    "value": "@appsetting('Routing_FulfillmentVersion')"
+  },
+  "Routing_CanaryPercentage": {
+    "type": "Int",
+    "value": "@appsetting('Routing_CanaryPercentage')"
+  },
+  "AppConfig_Endpoint": {
+    "type": "String",
+    "value": "@appsetting('AppConfig_Endpoint')"
+  },
+  "PricingConfig": {
+    "type": "Object",
+    "value": {
+      "comment": "An example of a structured (non-secret) parameter held entirely in parameters.json — handy for per-environment feature config that is not a simple boolean.",
+      "newEngine": {
+        "roundingMode": "bankers",
+        "taxInclusive": true,
+        "discountTiers": [ 0, 5, 10, 15 ]
+      },
+      "legacyEngine": {
+        "roundingMode": "half-up",
+        "taxInclusive": false,
+        "discountTiers": [ 0, 5 ]
+      }
+    }
+  }
+}

@@ -1,0 +1,136 @@
+{
+  "definition": {
+    "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+    "contentVersion": "1.0.0.0",
+    "comment": "SAMPLE 01 - Feature toggle via APP SETTINGS. Reads boolean flags directly with the appsetting() function and branches with a Condition. This is the simplest, most common pattern in Logic Apps Standard. Flags: FeatureFlag_GlobalKillSwitch, FeatureFlag_NewPricingEngine.",
+    "triggers": {
+      "When_an_order_is_received": {
+        "type": "Request",
+        "kind": "Http",
+        "inputs": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "orderId": { "type": "string" },
+              "amount": { "type": "number" }
+            }
+          }
+        }
+      }
+    },
+    "actions": {
+      "Read_kill_switch": {
+        "type": "InitializeVariable",
+        "inputs": {
+          "variables": [
+            {
+              "name": "killSwitchEnabled",
+              "type": "boolean",
+              "value": "@bool(appsetting('FeatureFlag_GlobalKillSwitch'))"
+            }
+          ]
+        },
+        "runAfter": {}
+      },
+      "Read_new_pricing_flag": {
+        "type": "InitializeVariable",
+        "inputs": {
+          "variables": [
+            {
+              "name": "newPricingEnabled",
+              "type": "boolean",
+              "value": "@bool(appsetting('FeatureFlag_NewPricingEngine'))"
+            }
+          ]
+        },
+        "runAfter": {
+          "Read_kill_switch": [ "Succeeded" ]
+        }
+      },
+      "Check_kill_switch": {
+        "type": "If",
+        "expression": {
+          "and": [
+            { "equals": [ "@variables('killSwitchEnabled')", true ] }
+          ]
+        },
+        "actions": {
+          "Respond_disabled": {
+            "type": "Response",
+            "kind": "Http",
+            "inputs": {
+              "statusCode": 503,
+              "body": {
+                "status": "disabled",
+                "reason": "Global kill switch is ON (FeatureFlag_GlobalKillSwitch=true). Order processing is paused."
+              }
+            }
+          }
+        },
+        "else": {
+          "actions": {
+            "Choose_pricing_engine": {
+              "type": "If",
+              "expression": {
+                "and": [
+                  { "equals": [ "@variables('newPricingEnabled')", true ] }
+                ]
+              },
+              "actions": {
+                "Price_with_new_engine": {
+                  "type": "Compose",
+                  "inputs": {
+                    "engine": "new-pricing-engine-v2",
+                    "orderId": "@triggerBody()?['orderId']",
+                    "computedTotal": "@mul(coalesce(triggerBody()?['amount'], 0), 0.9)",
+                    "note": "10% promo applied by the new engine"
+                  }
+                },
+                "Respond_new": {
+                  "type": "Response",
+                  "kind": "Http",
+                  "inputs": {
+                    "statusCode": 200,
+                    "body": "@outputs('Price_with_new_engine')"
+                  },
+                  "runAfter": {
+                    "Price_with_new_engine": [ "Succeeded" ]
+                  }
+                }
+              },
+              "else": {
+                "actions": {
+                  "Price_with_legacy_engine": {
+                    "type": "Compose",
+                    "inputs": {
+                      "engine": "legacy-pricing-engine",
+                      "orderId": "@triggerBody()?['orderId']",
+                      "computedTotal": "@coalesce(triggerBody()?['amount'], 0)",
+                      "note": "No promo. Legacy flat pricing."
+                    }
+                  },
+                  "Respond_legacy": {
+                    "type": "Response",
+                    "kind": "Http",
+                    "inputs": {
+                      "statusCode": 200,
+                      "body": "@outputs('Price_with_legacy_engine')"
+                    },
+                    "runAfter": {
+                      "Price_with_legacy_engine": [ "Succeeded" ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "runAfter": {
+          "Read_new_pricing_flag": [ "Succeeded" ]
+        }
+      }
+    },
+    "outputs": {}
+  },
+  "kind": "Stateful"
+}

@@ -1,0 +1,165 @@
+{
+  "definition": {
+    "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+    "contentVersion": "1.0.0.0",
+    "comment": "SAMPLE 04 - Feature toggle via INLINE CONTROL-FLOW. Shows three in-workflow patterns: (1) SWITCH-based version routing on Routing_FulfillmentVersion (legacy | v2 | canary); (2) a CANARY percentage split using rand() against Routing_CanaryPercentage; (3) a MOCK/dummy branch for safe testing. These patterns let you stage and dark-launch behavior using control flow rather than (or in addition to) external flag stores.",
+    "triggers": {
+      "When_fulfillment_is_requested": {
+        "type": "Request",
+        "kind": "Http",
+        "inputs": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "orderId": { "type": "string" },
+              "useMock": { "type": "boolean" }
+            }
+          }
+        }
+      }
+    },
+    "actions": {
+      "Mock_short_circuit": {
+        "type": "If",
+        "comment": "Dummy/mock branch: when the caller passes useMock=true, return a canned response and skip real fulfillment. Useful for load tests and downstream integration testing without side effects.",
+        "expression": {
+          "and": [
+            { "equals": [ "@coalesce(triggerBody()?['useMock'], false)", true ] }
+          ]
+        },
+        "actions": {
+          "Respond_mock": {
+            "type": "Response",
+            "kind": "Http",
+            "inputs": {
+              "statusCode": 200,
+              "body": {
+                "orderId": "@triggerBody()?['orderId']",
+                "handledBy": "MOCK",
+                "note": "Mock branch - no real fulfillment performed."
+              }
+            }
+          }
+        },
+        "else": {
+          "actions": {
+            "Route_by_version": {
+              "type": "Switch",
+              "expression": "@parameters('Routing_FulfillmentVersion')",
+              "cases": {
+                "Legacy": {
+                  "case": "legacy",
+                  "actions": {
+                    "Fulfill_legacy": {
+                      "type": "Response",
+                      "kind": "Http",
+                      "inputs": {
+                        "statusCode": 200,
+                        "body": {
+                          "orderId": "@triggerBody()?['orderId']",
+                          "handledBy": "fulfillment-legacy"
+                        }
+                      }
+                    }
+                  }
+                },
+                "V2": {
+                  "case": "v2",
+                  "actions": {
+                    "Fulfill_v2": {
+                      "type": "Response",
+                      "kind": "Http",
+                      "inputs": {
+                        "statusCode": 200,
+                        "body": {
+                          "orderId": "@triggerBody()?['orderId']",
+                          "handledBy": "fulfillment-v2"
+                        }
+                      }
+                    }
+                  }
+                },
+                "Canary": {
+                  "case": "canary",
+                  "actions": {
+                    "Roll_the_dice": {
+                      "type": "InitializeVariable",
+                      "inputs": {
+                        "variables": [
+                          {
+                            "name": "inCanary",
+                            "type": "boolean",
+                            "value": "@less(rand(0, 100), parameters('Routing_CanaryPercentage'))"
+                          }
+                        ]
+                      }
+                    },
+                    "Canary_split": {
+                      "type": "If",
+                      "expression": {
+                        "and": [
+                          { "equals": [ "@variables('inCanary')", true ] }
+                        ]
+                      },
+                      "actions": {
+                        "Fulfill_canary_v2": {
+                          "type": "Response",
+                          "kind": "Http",
+                          "inputs": {
+                            "statusCode": 200,
+                            "body": {
+                              "orderId": "@triggerBody()?['orderId']",
+                              "handledBy": "fulfillment-v2",
+                              "cohort": "canary"
+                            }
+                          }
+                        }
+                      },
+                      "else": {
+                        "actions": {
+                          "Fulfill_canary_legacy": {
+                            "type": "Response",
+                            "kind": "Http",
+                            "inputs": {
+                              "statusCode": 200,
+                              "body": {
+                                "orderId": "@triggerBody()?['orderId']",
+                                "handledBy": "fulfillment-legacy",
+                                "cohort": "control"
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "runAfter": {
+                        "Roll_the_dice": [ "Succeeded" ]
+                      }
+                    }
+                  }
+                }
+              },
+              "default": {
+                "actions": {
+                  "Respond_unknown_version": {
+                    "type": "Response",
+                    "kind": "Http",
+                    "inputs": {
+                      "statusCode": 400,
+                      "body": {
+                        "error": "Unknown Routing_FulfillmentVersion. Allowed: legacy | v2 | canary.",
+                        "received": "@parameters('Routing_FulfillmentVersion')"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "runAfter": {}
+      }
+    },
+    "outputs": {}
+  },
+  "kind": "Stateful"
+}

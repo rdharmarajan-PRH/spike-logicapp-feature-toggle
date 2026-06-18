@@ -1,0 +1,86 @@
+# ============================================================================
+# .gitignore for Azure Logic Apps Standard project
+# (Logic Apps Standard runs on the Azure Functions runtime, so this combines
+#  Functions, .NET, Node, and editor ignores.)
+# ============================================================================
+
+# ---- Azure Functions / Logic Apps Standard local artifacts ----
+# Local settings hold connection strings, keys, and per-developer config.
+# NEVER commit this. Commit local.settings.json.example instead.
+local.settings.json
+
+# Functions runtime working/output folders
+bin/
+obj/
+out/
+appsettings.json
+
+# Azure Functions Core Tools extension bundle cache
+.azurefunctions/
+extensions.csproj
+.debug/
+
+# Logic Apps designer / runtime local state
+workflow-designtime/
+.logicapp/
+
+# Azurite (local Azure Storage emulator) state
+__azurite_db*__.json
+__blobstorage__/
+__queuestorage__/
+azurite/
+*.azurite
+
+# ---- .NET ----
+*.user
+*.suo
+*.dll
+*.pdb
+project.lock.json
+artifacts/
+
+# ---- Node (custom code / connector dependencies) ----
+node_modules/
+npm-debug.log*
+yarn-error.log*
+package-lock.json.bak
+
+# ---- Azure / deployment ----
+.azure/
+*.publishsettings
+*.pubxml
+*.pubxml.user
+publish/
+PublishProfiles/
+
+# ---- Secrets (defensive: never commit credential-bearing files) ----
+*.pfx
+*.cer
+*.key
+*.pem
+secrets.json
+appsettings.*.json
+!appsettings.example.json
+
+# ---- Editors / IDEs ----
+.vs/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/launch.json
+!.vscode/tasks.json
+
+# JetBrains (Rider / IntelliJ)
+.idea/
+*.iml
+
+# Claude / AI assistant working folders
+.claude/
+.claude/**
+CLAUDE.local.md
+
+# ---- OS noise ----
+.DS_Store
+Thumbs.db
+desktop.ini
+*~

@@ -1,0 +1,14 @@
+# Files excluded when the Logic App (Functions runtime) is published to Azure.
+.git*
+.vscode
+.idea
+__azurite_db*__.json
+__blobstorage__
+__queuestorage__
+local.settings.json
+local.settings.json.example
+test
+.debug
+*.md
+docs/
+.github/

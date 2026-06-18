@@ -1,0 +1,37 @@
+### Logic Apps Standard - Feature Toggle Spike
+### Sample requests. Replace {host} with your local func host (default http://localhost:7071)
+### and {key} with the workflow's SAS signature from the trigger URL shown in VS Code.
+### When running locally with the Azure Logic Apps (Standard) extension, the trigger URL
+### is: http://localhost:7071/api/<workflow-name>/triggers/<trigger-name>/invoke?api-version=2022-05-01&sp=...&sv=...&sig=...
+
+@host = http://localhost:7071
+
+### 01 - App Settings toggle (new pricing on => 10% promo; flip FeatureFlag_NewPricingEngine in local.settings.json)
+POST {{host}}/api/01-appsettings-toggle/triggers/When_an_order_is_received/invoke?api-version=2022-05-01
+Content-Type: application/json
+
+{ "orderId": "ORD-1001", "amount": 200 }
+
+### 02 - Azure App Configuration toggle (requires a real AppConfig store + managed identity; see README)
+POST {{host}}/api/02-appconfiguration-toggle/triggers/When_a_shipment_is_requested/invoke?api-version=2022-05-01
+Content-Type: application/json
+
+{ "shipmentId": "SHP-77", "destination": "Seattle" }
+
+### 03 - Parameters file toggle (email on/off via FeatureFlag_SendEmailNotifications)
+POST {{host}}/api/03-parameters-file-toggle/triggers/When_an_invoice_is_created/invoke?api-version=2022-05-01
+Content-Type: application/json
+
+{ "invoiceId": "INV-555", "customerEmail": "test@example.com" }
+
+### 04a - Inline control-flow: version routing (set Routing_FulfillmentVersion = legacy | v2 | canary)
+POST {{host}}/api/04-inline-controlflow-toggle/triggers/When_fulfillment_is_requested/invoke?api-version=2022-05-01
+Content-Type: application/json
+
+{ "orderId": "ORD-2002" }
+
+### 04b - Inline control-flow: mock branch
+POST {{host}}/api/04-inline-controlflow-toggle/triggers/When_fulfillment_is_requested/invoke?api-version=2022-05-01
+Content-Type: application/json
+
+{ "orderId": "ORD-2003", "useMock": true }

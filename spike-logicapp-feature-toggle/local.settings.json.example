@@ -1,0 +1,25 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "node",
+    "WORKFLOWS_SUBSCRIPTION_ID": "",
+
+    "_comment_feature_flags": "===== Feature toggle app settings used by the spike =====",
+
+    "FeatureFlag_NewPricingEngine": "true",
+    "FeatureFlag_SendEmailNotifications": "false",
+    "FeatureFlag_BetaShippingProvider": "false",
+
+    "_comment_routing": "Used by 03 inline control-flow sample (allowed: legacy | v2 | canary)",
+    "Routing_FulfillmentVersion": "v2",
+    "Routing_CanaryPercentage": "20",
+
+    "_comment_appconfig": "===== Azure App Configuration (sample 02) =====",
+    "AppConfig_Endpoint": "https://my-appconfig-store.azconfig.io",
+    "AppConfig_ConnectionString": "Endpoint=https://my-appconfig-store.azconfig.io;Id=xxxx;Secret=xxxx",
+
+    "_comment_killswitch": "Global kill switch honored by all samples (true = workflows short-circuit)",
+    "FeatureFlag_GlobalKillSwitch": "false"
+  }
+}

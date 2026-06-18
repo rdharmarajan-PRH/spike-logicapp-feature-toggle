@@ -1,0 +1,88 @@
+{
+  "definition": {
+    "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+    "contentVersion": "1.0.0.0",
+    "comment": "SAMPLE 03 - Feature toggle via the PARAMETERS FILE (parameters.json). Demonstrates two flavors: (a) a Bool flag (FeatureFlag_SendEmailNotifications) whose value flows from app settings THROUGH parameters.json via @appsetting(), referenced here as @parameters(...); and (b) a structured Object parameter (PricingConfig) that holds richer per-environment feature config directly in parameters.json. Parameters give you one place to manage config and are evaluated at runtime.",
+    "triggers": {
+      "When_an_invoice_is_created": {
+        "type": "Request",
+        "kind": "Http",
+        "inputs": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "invoiceId": { "type": "string" },
+              "customerEmail": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "actions": {
+      "Select_pricing_config": {
+        "type": "Compose",
+        "comment": "Pick the config block from the PricingConfig object parameter based on the boolean pricing flag (also a parameter). Shows how an Object parameter avoids scattering many individual flags.",
+        "inputs": "@if(parameters('FeatureFlag_NewPricingEngine'), parameters('PricingConfig')['newEngine'], parameters('PricingConfig')['legacyEngine'])",
+        "runAfter": {}
+      },
+      "Check_email_notifications_flag": {
+        "type": "If",
+        "expression": {
+          "and": [
+            { "equals": [ "@parameters('FeatureFlag_SendEmailNotifications')", true ] }
+          ]
+        },
+        "actions": {
+          "Compose_email_dispatch": {
+            "type": "Compose",
+            "comment": "In a real workflow this would be an Office 365 / SMTP / SendGrid action. Kept as Compose so the sample runs with no connections.",
+            "inputs": {
+              "action": "send-email",
+              "to": "@triggerBody()?['customerEmail']",
+              "subject": "@concat('Invoice ', coalesce(triggerBody()?['invoiceId'], 'N/A'), ' is ready')",
+              "pricingProfile": "@outputs('Select_pricing_config')"
+            }
+          },
+          "Respond_with_email": {
+            "type": "Response",
+            "kind": "Http",
+            "inputs": {
+              "statusCode": 200,
+              "body": {
+                "invoiceId": "@triggerBody()?['invoiceId']",
+                "emailSent": true,
+                "flagSource": "parameters.json -> app settings",
+                "appliedPricingConfig": "@outputs('Select_pricing_config')"
+              }
+            },
+            "runAfter": {
+              "Compose_email_dispatch": [ "Succeeded" ]
+            }
+          }
+        },
+        "else": {
+          "actions": {
+            "Respond_without_email": {
+              "type": "Response",
+              "kind": "Http",
+              "inputs": {
+                "statusCode": 200,
+                "body": {
+                  "invoiceId": "@triggerBody()?['invoiceId']",
+                  "emailSent": false,
+                  "flagSource": "parameters.json -> app settings",
+                  "appliedPricingConfig": "@outputs('Select_pricing_config')"
+                }
+              }
+            }
+          }
+        },
+        "runAfter": {
+          "Select_pricing_config": [ "Succeeded" ]
+        }
+      }
+    },
+    "outputs": {}
+  },
+  "kind": "Stateful"
+}

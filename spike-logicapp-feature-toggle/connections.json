@@ -1,0 +1,6 @@
+{
+  "comment": "No managed/API connections are required to RUN the core toggle demos (they use Request triggers, Compose, Condition, Switch, and HTTP). This file is included to show where connections live in a Logic Apps Standard project and is intentionally minimal.",
+  "managedApiConnections": {},
+  "serviceProviderConnections": {},
+  "functionConnections": {}
+}
