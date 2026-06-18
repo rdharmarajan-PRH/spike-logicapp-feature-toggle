@@ -4,32 +4,44 @@ A code spike demonstrating **four different ways to do feature toggling in Azure
 
 | # | Approach | Workflow | Toggle source | Flip without redeploy? |
 |---|----------|----------|---------------|------------------------|
-| 01 | **App Settings** (`appsetting()`) | `workflows/01-appsettings-toggle` | App settings / env vars | Restart needed |
-| 02 | **Azure App Configuration** | `workflows/02-appconfiguration-toggle` | Central App Config store (REST) | **Yes — instant** |
-| 03 | **Parameters file** (`parameters.json`) | `workflows/03-parameters-file-toggle` | `parameters.json` → app settings | Restart needed |
-| 04 | **Inline control-flow** | `workflows/04-inline-controlflow-toggle` | Switch / Condition / canary split | Depends on driver |
+| 01 | **App Settings** (`appsetting()`) | `01-appsettings-toggle/` | App settings / env vars | Restart needed |
+| 02 | **Azure App Configuration** | `02-appconfiguration-toggle/` | Central App Config store (REST) | **Yes — instant** |
+| 03 | **Parameters file** (`parameters.json`) | `03-parameters-file-toggle/` | `parameters.json` → app settings | Restart needed |
+| 04 | **Inline control-flow** | `04-inline-controlflow-toggle/` | Switch / Condition / canary split | Depends on driver |
 
 ---
 
 ## Project layout
 
 ```
-spike-content/
-├── host.json                      # Functions/Logic Apps host config (extension bundle)
-├── connections.json               # Empty — no connections required for the demos
-├── parameters.json                # Shared workflow parameters (used by sample 03)
-├── local.settings.json.example    # Copy to local.settings.json to run locally
-├── .gitignore                     # Logic Apps / Functions / IDE ignores
-├── .funcignore                    # Files excluded from deployment
-├── .vscode/                       # Recommended extensions + run settings
-├── test/
-│   └── sample-requests.http       # Ready-to-send sample POST bodies
-└── workflows/
-    ├── 01-appsettings-toggle/workflow.json
-    ├── 02-appconfiguration-toggle/workflow.json
-    ├── 03-parameters-file-toggle/workflow.json
-    └── 04-inline-controlflow-toggle/workflow.json
+spike-logicapp-feature-toggle/
+├── FeatureToggleSpike.sln          # Root solution — open in Visual Studio / Rider
+├── host.json                       # Functions/Logic Apps host config (extension bundle)
+├── connections.json                # Empty — no connections required for the demos
+├── parameters.json                 # Shared workflow parameters (used by sample 03)
+├── local.settings.json.example     # Copy to local.settings.json to run locally
+├── .gitignore                      # Logic Apps / Functions / IDE / .NET ignores
+├── .funcignore                     # Files excluded from deployment
+├── .vscode/                        # Recommended extensions + run settings
+│
+│   # Each workflow lives in its OWN folder at the project root (Logic Apps
+│   # Standard convention — a sibling of host.json, NOT under a workflows/ folder).
+├── 01-appsettings-toggle/workflow.json
+├── 02-appconfiguration-toggle/workflow.json
+├── 03-parameters-file-toggle/workflow.json
+├── 04-inline-controlflow-toggle/workflow.json
+│
+├── tests-dotnet/                   # C# tests (runnable from Visual Studio / Rider)
+│   ├── FeatureToggleTests.sln      #   tests-only solution
+│   ├── LogicAppUnit.Tests/         #   real engine, mocked edges (fast)
+│   └── RealHost.IntegrationTests/  #   true integration via a real func host (Corvus)
+│
+└── test/
+    └── sample-requests.http        # Ready-to-send sample POST bodies (REST Client)
 ```
+
+> The old `workflows/` subfolder is obsolete (workflows now sit at the root). If it is
+> still present in your checkout, delete it.
 
 ---
 
@@ -105,10 +117,12 @@ Toggling done entirely *inside* the workflow with control-flow actions. Three pa
 3. Press **F5** (or *Run → Start Debugging*) to launch the Logic Apps runtime on `http://localhost:7071`.
 4. In the **Workflows** view, right-click a workflow → **Overview** to copy its callback URL, or use the bodies in `test/sample-requests.http`.
 
-## Automated tests (C#, Visual Studio)
+## Automated tests (C#, Visual Studio / Rider)
 
-The `tests-dotnet/` folder contains two complementary C# test projects (open
-`tests-dotnet/FeatureToggleTests.sln` and run from Visual Studio Test Explorer):
+Open **`FeatureToggleSpike.sln`** at the repo root in Visual Studio or Rider — it includes
+both test projects plus a solution folder exposing the workflows and config files. (A
+tests-only `tests-dotnet/FeatureToggleTests.sln` is also available.) Run from the IDE's
+test runner or with `dotnet test`. The two complementary C# test projects are:
 
 - **LogicAppUnit.Tests** — runs the real workflow engine with external calls mocked
   ("real engine, mocked edges"). Fast; ideal for CI. Covers samples 01/03/04 and mocks
