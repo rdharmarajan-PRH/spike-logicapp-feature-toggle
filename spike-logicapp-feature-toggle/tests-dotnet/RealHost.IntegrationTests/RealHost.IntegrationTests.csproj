@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Corvus.Testing.AzureFunctions starts a REAL `func host start` from C#, so we
+         make real HTTP calls to the running Logic App (true integration test). -->
+    <PackageReference Include="Corvus.Testing.AzureFunctions" Version="5.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="8.0.1" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+  </ItemGroup>
+
+  <!-- The real host needs the actual Logic App project on disk. We point the tests at
+       the spike root via a property the fixture reads, and ALSO copy a runnable copy
+       into the output so the tests are self-contained on a build agent. -->
+  <ItemGroup>
+    <_LaRoot Include="..\..\host.json;..\..\parameters.json;..\..\connections.json;..\..\local.settings.json.example" />
+    <_Wf01 Include="..\..\01-appsettings-toggle\**\*.*" />
+    <_Wf02 Include="..\..\02-appconfiguration-toggle\**\*.*" />
+    <_Wf03 Include="..\..\03-parameters-file-toggle\**\*.*" />
+    <_Wf04 Include="..\..\04-inline-controlflow-toggle\**\*.*" />
+  </ItemGroup>
+  <Target Name="CopyLogicApp" BeforeTargets="Build">
+    <Copy SourceFiles="@(_LaRoot)" DestinationFiles="@(_LaRoot->'$(OutDir)LogicApp\%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(_Wf01)" DestinationFiles="@(_Wf01->'$(OutDir)LogicApp\01-appsettings-toggle\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(_Wf02)" DestinationFiles="@(_Wf02->'$(OutDir)LogicApp\02-appconfiguration-toggle\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(_Wf03)" DestinationFiles="@(_Wf03->'$(OutDir)LogicApp\03-parameters-file-toggle\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(_Wf04)" DestinationFiles="@(_Wf04->'$(OutDir)LogicApp\04-inline-controlflow-toggle\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="..\..\local.settings.json.example" DestinationFiles="$(OutDir)LogicApp\local.settings.json" SkipUnchangedFiles="true" />
+  </Target>
+
+</Project>

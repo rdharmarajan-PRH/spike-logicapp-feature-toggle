@@ -79,6 +79,13 @@ appsettings.*.json
 .claude/**
 CLAUDE.local.md
 
+# ---- .NET test projects (tests-dotnet/) ----
+[Bb]in/
+[Oo]bj/
+TestResults/
+*.user
+LogicApp/          # copied Logic App in test build output
+
 # ---- OS noise ----
 .DS_Store
 Thumbs.db

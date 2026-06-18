@@ -1,0 +1,58 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- LogicAppUnit is MSTest-based; add the SDK + adapter so tests show up in
+         Visual Studio Test Explorer and `dotnet test`. -->
+    <PackageReference Include="LogicAppUnit" Version="1.12.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="MSTest.TestAdapter" Version="3.6.1" />
+    <PackageReference Include="MSTest.TestFramework" Version="3.6.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="testConfiguration.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <!-- Copy the spike's Logic App into the test build output under "LogicApp".
+       Workflow folders live at the PROJECT ROOT (Logic Apps Standard convention),
+       so we copy each one explicitly to keep "<workflow>\workflow.json" intact.
+       LogicAppUnit loads the real workflow.json from here and runs the actual engine. -->
+  <ItemGroup>
+    <_LaRoot Include="..\..\host.json;..\..\parameters.json;..\..\connections.json" />
+    <_Wf01 Include="..\..\01-appsettings-toggle\**\*.*" />
+    <_Wf02 Include="..\..\02-appconfiguration-toggle\**\*.*" />
+    <_Wf03 Include="..\..\03-parameters-file-toggle\**\*.*" />
+    <_Wf04 Include="..\..\04-inline-controlflow-toggle\**\*.*" />
+  </ItemGroup>
+  <Target Name="CopyLogicApp" BeforeTargets="Build">
+    <Copy SourceFiles="@(_LaRoot)"
+          DestinationFiles="@(_LaRoot->'$(OutDir)LogicApp\%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(_Wf01)"
+          DestinationFiles="@(_Wf01->'$(OutDir)LogicApp\01-appsettings-toggle\%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(_Wf02)"
+          DestinationFiles="@(_Wf02->'$(OutDir)LogicApp\02-appconfiguration-toggle\%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(_Wf03)"
+          DestinationFiles="@(_Wf03->'$(OutDir)LogicApp\03-parameters-file-toggle\%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(_Wf04)"
+          DestinationFiles="@(_Wf04->'$(OutDir)LogicApp\04-inline-controlflow-toggle\%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
+    <Copy SourceFiles="..\..\local.settings.json.example"
+          DestinationFiles="$(OutDir)LogicApp\local.settings.json"
+          SkipUnchangedFiles="true" />
+  </Target>
+
+</Project>

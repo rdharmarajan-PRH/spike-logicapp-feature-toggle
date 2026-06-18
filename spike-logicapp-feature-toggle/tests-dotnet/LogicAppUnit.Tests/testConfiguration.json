@@ -1,0 +1,22 @@
+{
+  "localSettingsFilename": "local.settings.json",
+  "azurite": {
+    "enableAzuritePortCheck": false
+  },
+  "logging": {
+    "writeFunctionRuntimeStartupLogs": false,
+    "writeMockRequestMatchingLogs": false
+  },
+  "runner": {
+    "maxWorkflowExecutionDuration": 120,
+    "defaultHttpResponseStatusCode": 200
+  },
+  "workflow": {
+    "externalApiUrlsToMock": [
+      "https://my-appconfig-store.azconfig.io"
+    ],
+    "removeHttpRetryConfiguration": true,
+    "removeHttpChunkingConfiguration": true,
+    "autoConfigureWithStatelessRunHistory": true
+  }
+}

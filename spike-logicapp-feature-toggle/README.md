@@ -105,6 +105,26 @@ Toggling done entirely *inside* the workflow with control-flow actions. Three pa
 3. Press **F5** (or *Run → Start Debugging*) to launch the Logic Apps runtime on `http://localhost:7071`.
 4. In the **Workflows** view, right-click a workflow → **Overview** to copy its callback URL, or use the bodies in `test/sample-requests.http`.
 
+## Automated tests (C#, Visual Studio)
+
+The `tests-dotnet/` folder contains two complementary C# test projects (open
+`tests-dotnet/FeatureToggleTests.sln` and run from Visual Studio Test Explorer):
+
+- **LogicAppUnit.Tests** — runs the real workflow engine with external calls mocked
+  ("real engine, mocked edges"). Fast; ideal for CI. Covers samples 01/03/04 and mocks
+  02's App Configuration call.
+- **RealHost.IntegrationTests** — a *true* integration suite: it starts a real `func host`
+  (via Corvus.Testing.AzureFunctions) and makes real HTTP calls, flipping app settings
+  per scenario.
+
+```bash
+dotnet test tests-dotnet/LogicAppUnit.Tests        # fast, mocked edges
+dotnet test tests-dotnet/RealHost.IntegrationTests # true integration (needs Azurite + func)
+```
+
+See [`tests-dotnet/README.md`](tests-dotnet/README.md) for prerequisites and the full
+scenario matrix.
+
 ### Try the toggles
 
 | Flag (in `local.settings.json`) | Effect |
