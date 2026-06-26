@@ -8,19 +8,22 @@ namespace FeatureToggle.LogicAppUnit.Tests;
 
 /// <summary>
 /// Sample 01 - feature toggle via APP SETTINGS, tested with LogicAppUnit.
-/// The flag values are injected per-test by overriding local settings, so the real
-/// engine evaluates the real Condition actions. No host restart, no Azure.
+/// Flag values are injected per-test via CreateTestRunner(overrides), so the real engine
+/// evaluates the real Condition actions. No host restart, no Azure.
 /// </summary>
 [TestClass]
 public class AppSettingsToggleTests : TestBase
 {
     private const string Workflow = "01-appsettings-toggle";
 
+    // Initialize() stores per-instance workflow state, and MSTest creates a fresh instance
+    // for each test, so initialise per-test in [TestInitialize]. Close() disposes a shared
+    // static HttpClient, so call it ONCE in [ClassCleanup], never per test.
     [TestInitialize]
     public void Setup() => InitFor(Workflow);
 
-    [TestCleanup]
-    public void Cleanup() => Close();
+    [ClassCleanup]
+    public static void Teardown() => Close();
 
     private static StringContent Order(string id, decimal amount) =>
         new(JsonSerializer.Serialize(new { orderId = id, amount }), Encoding.UTF8, "application/json");

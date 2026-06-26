@@ -22,14 +22,14 @@
       "Select_pricing_config": {
         "type": "Compose",
         "comment": "Pick the config block from the PricingConfig object parameter based on the boolean pricing flag (also a parameter). Shows how an Object parameter avoids scattering many individual flags.",
-        "inputs": "@if(parameters('FeatureFlag_NewPricingEngine'), parameters('PricingConfig')['newEngine'], parameters('PricingConfig')['legacyEngine'])",
+        "inputs": "@if(bool(parameters('FeatureFlag_NewPricingEngine')), parameters('PricingConfig')['newEngine'], parameters('PricingConfig')['legacyEngine'])",
         "runAfter": {}
       },
       "Check_email_notifications_flag": {
         "type": "If",
         "expression": {
           "and": [
-            { "equals": [ "@parameters('FeatureFlag_SendEmailNotifications')", true ] }
+            { "equals": [ "@bool(parameters('FeatureFlag_SendEmailNotifications'))", true ] }
           ]
         },
         "actions": {

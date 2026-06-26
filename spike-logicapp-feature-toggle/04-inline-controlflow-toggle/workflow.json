@@ -82,23 +82,12 @@
                 "Canary": {
                   "case": "canary",
                   "actions": {
-                    "Roll_the_dice": {
-                      "type": "InitializeVariable",
-                      "inputs": {
-                        "variables": [
-                          {
-                            "name": "inCanary",
-                            "type": "boolean",
-                            "value": "@less(rand(0, 100), parameters('Routing_CanaryPercentage'))"
-                          }
-                        ]
-                      }
-                    },
                     "Canary_split": {
                       "type": "If",
+                      "comment": "Canary percentage split. InitializeVariable cannot be nested inside a Switch/If in Logic Apps Standard, so the random roll is evaluated inline in this condition instead of being stored in a variable. rand(0,100) yields 0-99, so percentage=100 always routes to canary and percentage=0 never does.",
                       "expression": {
                         "and": [
-                          { "equals": [ "@variables('inCanary')", true ] }
+                          { "equals": [ "@less(rand(0, 100), int(parameters('Routing_CanaryPercentage')))", true ] }
                         ]
                       },
                       "actions": {
@@ -130,9 +119,6 @@
                             }
                           }
                         }
-                      },
-                      "runAfter": {
-                        "Roll_the_dice": [ "Succeeded" ]
                       }
                     }
                   }

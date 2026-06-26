@@ -1,18 +1,18 @@
 {
   "FeatureFlag_NewPricingEngine": {
-    "type": "Bool",
+    "type": "String",
     "value": "@appsetting('FeatureFlag_NewPricingEngine')"
   },
   "FeatureFlag_SendEmailNotifications": {
-    "type": "Bool",
+    "type": "String",
     "value": "@appsetting('FeatureFlag_SendEmailNotifications')"
   },
   "FeatureFlag_BetaShippingProvider": {
-    "type": "Bool",
+    "type": "String",
     "value": "@appsetting('FeatureFlag_BetaShippingProvider')"
   },
   "FeatureFlag_GlobalKillSwitch": {
-    "type": "Bool",
+    "type": "String",
     "value": "@appsetting('FeatureFlag_GlobalKillSwitch')"
   },
   "Routing_FulfillmentVersion": {
@@ -20,7 +20,7 @@
     "value": "@appsetting('Routing_FulfillmentVersion')"
   },
   "Routing_CanaryPercentage": {
-    "type": "Int",
+    "type": "String",
     "value": "@appsetting('Routing_CanaryPercentage')"
   },
   "AppConfig_Endpoint": {

@@ -15,11 +15,13 @@ public class InlineControlFlowToggleTests : TestBase
 {
     private const string Workflow = "04-inline-controlflow-toggle";
 
+    // InitFor per-test (Initialize stores per-instance state); Close() once per class
+    // (it disposes a shared static HttpClient, so must not run after every test).
     [TestInitialize]
     public void Setup() => InitFor(Workflow);
 
-    [TestCleanup]
-    public void Cleanup() => Close();
+    [ClassCleanup]
+    public static void Teardown() => Close();
 
     private static StringContent Fulfillment(string id, bool? useMock = null)
     {

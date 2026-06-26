@@ -45,7 +45,48 @@ spike-logicapp-feature-toggle/
 
 ---
 
-## The four approaches
+## Feature toggling in plain terms (for the team)
+
+**What a feature toggle is:** a switch in configuration that turns a piece of behavior on
+or off **without changing code**. Flip the switch and the app behaves differently. Teams
+use toggles to release features gradually, to turn something off instantly in an emergency
+(a "kill switch"), and to make the *same* build behave differently in dev, test and prod.
+
+This spike shows **four ways** to do that in Logic Apps Standard. They differ mainly in
+*where the switch lives* and *how fast you can flip it*:
+
+**1. App Settings — the simple on/off switch.**
+The switch is a plain value in the app's configuration. Easiest to understand, needs no
+extra tools. *Trade-off:* changing it in Azure restarts the app, and it's only true/false
+(no "roll out to 10% of users"). Best for a few switches that rarely change.
+
+**2. Azure App Configuration — the central switchboard.**
+The switches live in a shared Azure service that many apps can read. The big win: you can
+**flip a switch instantly without redeploying or restarting**, and it supports gradual
+rollout (e.g. "turn this on for 20% of traffic"). *Trade-off:* it's an extra Azure resource
+to set up and pay for. Best when flags change often or are shared across services.
+
+**3. Parameters file — the tidy settings file.**
+Switches (and richer settings, not just on/off) live in one organized config file that
+ships with the app. Good when you want a single, typed place for per-environment settings.
+*Trade-off:* still needs a restart/redeploy to change. Best for shared, structured config.
+
+**4. Inline control-flow — switching built into the workflow.**
+The decision logic lives *inside the workflow itself* — route to "version 1" vs "version
+2", send a slice of traffic down a new path, or flip into a test/mock mode. Most flexible
+for staging a migration or A/B-style rollouts. *Trade-off:* changing the routing shape
+means editing and redeploying the workflow.
+
+**Rule of thumb:** start with **App Settings** for simple per-environment switches; move to
+**App Configuration** when you need instant changes, sharing, or percentage rollouts; use
+**Parameters** for tidy structured config; reach for **inline control-flow** when you're
+routing between two implementations or dark-launching.
+
+The same four are described in implementation detail below.
+
+---
+
+## The four approaches (implementation detail)
 
 ### 01 — App Settings (the simplest, most common pattern)
 
@@ -81,14 +122,60 @@ Flags in App Configuration are stored under the reserved key prefix `.appconfig.
 
 `parameters.json` holds workflow parameters that are referenced with **`@parameters('name')`**. Two flavors are shown:
 
-- A **boolean flag** whose value flows from app settings *through* a parameter:
+- A **boolean flag** whose value flows from app settings *through* a parameter. Inside
+  `parameters.json` the **only** expression function allowed is `@appsetting(...)`, and it
+  always returns a **string** — so the parameter is declared **`String`** (declaring it
+  `Bool`/`Int` makes the runtime reject the file at startup with *"the provided value …
+  is not valid"*), and the workflow coerces it with `bool(...)` / `int(...)` where a real
+  boolean or number is needed:
   ```jsonc
-  "FeatureFlag_SendEmailNotifications": { "type": "Bool", "value": "@appsetting('FeatureFlag_SendEmailNotifications')" }
+  "FeatureFlag_SendEmailNotifications": { "type": "String", "value": "@appsetting('FeatureFlag_SendEmailNotifications')" }
   ```
 - A **structured `Object` parameter** (`PricingConfig`) holding richer per-environment config (rounding mode, discount tiers) so you don't scatter many individual flags.
 
+**Where does a parameter's value actually come from?** This trips people up, so it is worth
+being explicit. A parameter in `parameters.json` gets its value from one of *two* places:
+
+1. **From an app setting** — the parameter is just a *pointer*; the real value lives in app
+   settings (`local.settings.json` locally, or App Service application settings in Azure).
+   You can tell because the `value` is an `@appsetting(...)` expression:
+   ```jsonc
+   "FeatureFlag_SendEmailNotifications": {
+     "type": "String",                                             // @appsetting() returns a string
+     "value": "@appsetting('FeatureFlag_SendEmailNotifications')"   // value supplied in app settings
+   }
+   ```
+
+2. **Inline in `parameters.json` itself** — the value is written directly in the file, with
+   **no** `@appsetting(...)`. This is how `PricingConfig` is supplied — the whole object
+   literal *is* the value, and it ships inside the deployable artifact:
+   ```jsonc
+   "PricingConfig": {
+     "type": "Object",
+     "value": {                                                    // value supplied right here
+       "newEngine":    { "roundingMode": "bankers", "taxInclusive": true,  "discountTiers": [0,5,10,15] },
+       "legacyEngine": { "roundingMode": "half-up", "taxInclusive": false, "discountTiers": [0,5] }
+     }
+   }
+   ```
+
+The workflow then reads it the same way regardless of source — `@parameters('PricingConfig')`
+returns the whole object, and the sample picks a sub-block based on the boolean flag
+(coerced from its string parameter with `bool(...)`):
+```jsonc
+"@if(bool(parameters('FeatureFlag_NewPricingEngine')),
+     parameters('PricingConfig')['newEngine'],
+     parameters('PricingConfig')['legacyEngine'])"
+```
+
+> **Per-environment caveat:** because inline values (like `PricingConfig`) live in the
+> shipped artifact, changing them needs a **redeploy** — they cannot vary per environment on
+> their own. If you need that, store the JSON as an app-setting string instead and parse it:
+> `@json(appsetting('PricingConfig'))`. Then the *value* comes from app settings (point 1)
+> while still being a structured object.
+
 - **Pros:** one tidy place to manage config; supports rich objects, not just booleans; the *same artifact* deploys to every environment and behaves differently based on settings.
-- **Cons:** values sourced from app settings still require a restart to change; `parameters.json` is part of the deployable artifact, so structural changes need a deploy.
+- **Cons:** values sourced from app settings still require a restart to change; inline values in `parameters.json` are part of the deployable artifact, so changing them needs a deploy.
 - **Use when:** you want centralized, typed, possibly-structured config shared across all workflows in the app.
 
 ### 04 — Inline control-flow
@@ -96,7 +183,7 @@ Flags in App Configuration are stored under the reserved key prefix `.appconfig.
 Toggling done entirely *inside* the workflow with control-flow actions. Three patterns:
 
 1. **Switch-based version routing** on `Routing_FulfillmentVersion` (`legacy` | `v2` | `canary`) — classic strangler-fig / blue-green style routing.
-2. **Canary percentage split** — `@less(rand(0,100), parameters('Routing_CanaryPercentage'))` sends a configurable slice of traffic to v2.
+2. **Canary percentage split** — `@less(rand(0,100), int(parameters('Routing_CanaryPercentage')))` sends a configurable slice of traffic to v2. (The roll is evaluated inline in the canary branch's `If` condition because Logic Apps Standard does not allow an `InitializeVariable` nested inside a `Switch`/`If`; `int(...)` coerces the string parameter.)
 3. **Mock / dummy branch** — caller passes `useMock: true` to get a canned response and skip real side effects (great for load tests).
 
 - **Pros:** no external dependency; expressive (multi-way routing, cohorts, dark launches); visible in the designer.

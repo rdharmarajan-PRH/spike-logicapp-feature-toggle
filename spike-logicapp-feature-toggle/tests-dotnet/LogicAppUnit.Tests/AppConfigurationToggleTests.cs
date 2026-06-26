@@ -6,19 +6,11 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace FeatureToggle.LogicAppUnit.Tests;
 
-// =============================================================================
-// NOTE ON THE MOCK API:
-// LogicAppUnit's outgoing-HTTP mocking API has two styles across versions:
-//   (a) Delegate:   testRunner.AddApiMocks = (request) => new HttpResponseMessage(...);
-//   (b) Fluent:     testRunner.AddMockResponse(MockRequestMatcher.Create()...)
-//                             .RespondWith(MockResponseBuilder.Create()...);
-// This file uses the delegate style (a). If your installed LogicAppUnit version
-// exposes the fluent style instead, swap the AddApiMocks assignments for the
-// equivalent AddMockResponse(...) calls (see the wiki: "Mocking of Outgoing HTTP
-// Calls"). The assertions below do not change either way.
-// =============================================================================
-
-
+// The workflow makes ONE outbound HTTP GET to Azure App Configuration. We intercept it
+// with LogicAppUnit's delegate mock (ITestRunner.AddApiMocks, available in 1.12.0) and
+// return a canned feature-flag document. The framework redirects the call to its mock
+// server because the App Config host is listed in testConfiguration.json
+// (externalApiUrlsToMock) and strips the ManagedServiceIdentity auth automatically.
 
 /// <summary>
 /// Sample 02 - feature toggle via AZURE APP CONFIGURATION, tested with LogicAppUnit.
@@ -36,11 +28,13 @@ public class AppConfigurationToggleTests : TestBase
 {
     private const string Workflow = "02-appconfiguration-toggle";
 
+    // InitFor per-test (Initialize stores per-instance state); Close() once per class
+    // (it disposes a shared static HttpClient, so must not run after every test).
     [TestInitialize]
     public void Setup() => InitFor(Workflow);
 
-    [TestCleanup]
-    public void Cleanup() => Close();
+    [ClassCleanup]
+    public static void Teardown() => Close();
 
     private static StringContent Shipment() =>
         new(JsonSerializer.Serialize(new { shipmentId = "SHP-77", destination = "Seattle" }),

@@ -16,11 +16,13 @@ public class ParametersFileToggleTests : TestBase
 {
     private const string Workflow = "03-parameters-file-toggle";
 
+    // InitFor per-test (Initialize stores per-instance state); Close() once per class
+    // (it disposes a shared static HttpClient, so must not run after every test).
     [TestInitialize]
     public void Setup() => InitFor(Workflow);
 
-    [TestCleanup]
-    public void Cleanup() => Close();
+    [ClassCleanup]
+    public static void Teardown() => Close();
 
     private static StringContent Invoice() =>
         new(JsonSerializer.Serialize(new { invoiceId = "INV-555", customerEmail = "test@example.com" }),
