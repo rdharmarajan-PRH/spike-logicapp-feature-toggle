@@ -1,7 +1,7 @@
 {
   "localSettingsFilename": "local.settings.json",
   "azurite": {
-    "enableAzuritePortCheck": false
+    "enableAzuritePortCheck": true
   },
   "logging": {
     "writeFunctionRuntimeStartupLogs": false,
