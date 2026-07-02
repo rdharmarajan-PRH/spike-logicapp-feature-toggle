@@ -21,6 +21,8 @@ public static class AzuriteLifetime
     [AssemblyInitialize]
     public static void StartAzurite(TestContext _)
     {
+        EnsureToolsOnPath();
+
         if (IsListening(BlobPort))
             return; // already running – reuse it
 
@@ -74,5 +76,32 @@ public static class AzuriteLifetime
     {
         try { using var t = new TcpClient(); t.Connect("127.0.0.1", port); return true; }
         catch { return false; }
+    }
+
+    /// <summary>
+    /// Prepends the npm global bin directory (azurite) and Azure Functions Core Tools
+    /// (func.exe) to the current process PATH so both this Azurite launcher and the
+    /// LogicAppUnit WorkflowTestHost can find the required tools without requiring the
+    /// user to have them in their system PATH.
+    /// </summary>
+    private static void EnsureToolsOnPath()
+    {
+        var candidates = new[]
+        {
+            // npm global bin – where `npm install -g azurite` puts azurite.cmd
+            Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "npm"),
+            // Azure Functions Core Tools default install location
+            @"C:\Program Files\Microsoft\Azure Functions Core Tools",
+        };
+
+        var current = Environment.GetEnvironmentVariable("PATH") ?? string.Empty;
+        var toAdd = candidates
+            .Where(p => Directory.Exists(p) && !current.Contains(p, StringComparison.OrdinalIgnoreCase));
+
+        var prepend = string.Join(Path.PathSeparator.ToString(), toAdd);
+        if (!string.IsNullOrEmpty(prepend))
+            Environment.SetEnvironmentVariable("PATH", prepend + Path.PathSeparator + current);
     }
 }
